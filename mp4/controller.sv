@@ -27,6 +27,10 @@ module controller
     // create a test placeholder to debug whether the register has the proper value
     logic [31:0] test;
 
+    logic [31:0] debug;
+
+    logic debug2;
+
 
     initial begin
         //------initial setup, this where all of the outputs are defined-------
@@ -80,23 +84,19 @@ module controller
                             // assign the immediate value with 32 bits, but preserving the signed bit
                             immediate <= {{20{read_data[31:30]}}, read_data[31:20]};
 
+                            debug <= registers[read_data[19:15]];
+
+                            debug2 <= (registers[read_data[19:15]] < immediate);
+
                             if ($signed(registers[read_data[19:15]]) < $signed(immediate)) begin
                                 registers[read_data[11:7]] <= registers[read_data[19:15]];
                             end else begin
                                 registers[read_data[11:7]] <= 32'b0;
                             end
 
-
                         end
 
                     endcase
-
-                    
-
-
-
-
-
 
                 end
 
@@ -104,21 +104,14 @@ module controller
             endcase
 
             
-
-
-
-            
-        
-
-            
             // iterate the read address
-            read_address <= read_address + 32; // moving the read address 32 bits
+            read_address <= read_address + 4; // moving the read address 32 bits
         end
 
-        test <= registers['b00001];
+        
     end
 
-
+    assign test = registers['b00010];
 
 
 
