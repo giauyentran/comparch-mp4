@@ -65,7 +65,7 @@ module controller
 
                     // read the 3 bits to determine what type of i-type operation it is
                     case (read_data[14:12])
-                        3'b000: begin // perform addi instruction
+                        3'b000: begin // perform addi 
                             // assign the immediate value with 20 zeros in front
                             immediate <= {20'b0, read_data[31:20]};
 
@@ -73,10 +73,25 @@ module controller
                             registers[read_data[11:7]] <= immediate + registers[read_data[19:15]];
 
                             
+                        end
+
+                        3'b010: begin // perform slti 
+                            // Place the value 1 in register rd if register rs1 is less than the signextended immediate, else 0 is placed
+                            // assign the immediate value with 32 bits, but preserving the signed bit
+                            immediate <= {{20{read_data[31:30]}}, read_data[31:20]};
+
+                            if ($signed(registers[read_data[19:15]]) < $signed(immediate)) begin
+                                registers[read_data[11:7]] <= registers[read_data[19:15]];
+                            end else begin
+                                registers[read_data[11:7]] <= 32'b0;
+                            end
+
 
                         end
 
                     endcase
+
+                    
 
 
 
@@ -92,10 +107,10 @@ module controller
 
 
 
-
+            
         
 
-
+            
             // iterate the read address
             read_address <= read_address + 32; // moving the read address 32 bits
         end
