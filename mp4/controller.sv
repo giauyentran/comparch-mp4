@@ -71,10 +71,8 @@ module controller
                     case (read_data[14:12])
                         3'b000: begin // perform addi 
                             // assign the immediate value with 20 zeros in front
-                            immediate <= {20'b0, read_data[31:20]};
-
                             // add the immediate value with the corresponding register value to its destination register
-                            registers[read_data[11:7]] <= immediate + registers[read_data[19:15]];
+                            registers[read_data[11:7]] <= {20'b0, read_data[31:20]} + registers[read_data[19:15]];
 
                             
                         end
@@ -82,17 +80,19 @@ module controller
                         3'b010: begin // perform slti 
                             // Place the value 1 in register rd if register rs1 is less than the signextended immediate, else 0 is placed
                             // assign the immediate value with 32 bits, but preserving the signed bit
-                            immediate <= {{20{read_data[31:30]}}, read_data[31:20]};
 
-                            debug <= registers[read_data[19:15]];
-
-                            debug2 <= (registers[read_data[19:15]] < immediate);
-
-                            if ($signed(registers[read_data[19:15]]) < $signed(immediate)) begin
+                            if ($signed(registers[read_data[19:15]]) < $signed({{21{read_data[31]}}, read_data[30:20]})) begin
                                 registers[read_data[11:7]] <= registers[read_data[19:15]];
                             end else begin
                                 registers[read_data[11:7]] <= 32'b0;
                             end
+
+                        end
+
+                        3'b100: begin // perform xori
+                            // Performs bitwise XOR on register rs1 and the sign-extended 12-bit immediate and place the result in rd
+
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] ^ {{21{read_data[31]}}, read_data[30:20]};
 
                         end
 
@@ -111,7 +111,7 @@ module controller
         
     end
 
-    assign test = registers['b00010];
+    assign test = registers['b00011];
 
 
 
