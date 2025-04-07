@@ -96,6 +96,69 @@ module controller
 
                         end
 
+                        3'b110: begin // perform ori
+                            // Performs bitwise OR on register rs1 and the sign-extended 12-bit immediate and place the result in rd
+
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] | {{21{read_data[31]}}, read_data[30:20]};
+
+                        end
+
+ 
+
+                        3'b111: begin // perform andi
+                            // Performs bitwise AND on register rs1 and the sign-extended 12-bit immediate and place the result in rd
+
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] & {{21{read_data[31]}}, read_data[30:20]};
+
+                        end
+
+                        3'b011: begin // perform sltiu
+                             // Place the value 1 in register rd if register rs1 is less than the immediate when both are 
+                             // treated as unsigned numbers, else 0 is written to rd.
+
+                            if (registers[read_data[19:15]] < {20'b0, read_data[31:20]}) begin
+                                registers[read_data[11:7]] <= registers[read_data[19:15]];
+                            end else begin
+                                registers[read_data[11:7]] <= 32'b0;
+                            end
+
+                        end
+
+                        3'b001: begin // perform slli
+                            // Performs logical left shift on the value in register rs1 by the shift amount held in the lower 5 bits of the immediate
+
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] << read_data[24:20];
+
+                        end
+
+                        3'b101: begin // perform srli or srai
+
+                            case (read_data[31:27])
+                                5'b00000: begin // logical right shift
+                                    // Performs logical right shift on the value in register rs1 by the shift amount held in the lower 5 bits of the immediat
+
+                                    registers[read_data[11:7]] <= registers[read_data[19:15]] >> read_data[24:20];
+                                end
+
+                                5'b01000: begin // arithmetic right shift
+                                    registers[read_data[11:7]] <= registers[read_data[19:15]] >>> read_data[24:20];
+
+                                end
+
+                            
+
+                            endcase
+
+                        end
+
+                        3'b101: begin // perform srai
+                            // Performs arithmetic right shift on the value in register rs1 by the shift amount held in the lower 5 bits of the immediate
+
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] >>> read_data[24:20];
+
+                        end
+
+
                     endcase
 
                 end
@@ -111,7 +174,7 @@ module controller
         
     end
 
-    assign test = registers['b00011];
+    assign test = registers['b01000];
 
 
 
