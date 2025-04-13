@@ -21,17 +21,6 @@ module controller
     // define iterator object
     int i;
 
-    // create a placeholder for the immediate value
-    logic [31:0] immediate;
-
-    // create a test placeholder to debug whether the register has the proper value
-    logic [31:0] test;
-
-    logic [31:0] debug;
-
-    logic debug2;
-
-
     initial begin
         //------initial setup, this where all of the outputs are defined-------
 
@@ -70,9 +59,9 @@ module controller
                     // read the 3 bits to determine what type of i-type operation it is
                     case (read_data[14:12])
                         3'b000: begin // perform addi 
-                            // assign the immediate value with 20 zeros in front
+                            // assign the immediate value with sign extend
                             // add the immediate value with the corresponding register value to its destination register
-                            registers[read_data[11:7]] <= {20'b0, read_data[31:20]} + registers[read_data[19:15]];
+                            registers[read_data[11:7]] <= {21{read_data[31]}, read_data[30:20]} + registers[read_data[19:15]];
 
                             
                         end
@@ -103,7 +92,6 @@ module controller
 
                         end
 
- 
 
                         3'b111: begin // perform andi
                             // Performs bitwise AND on register rs1 and the sign-extended 12-bit immediate and place the result in rd
@@ -174,7 +162,6 @@ module controller
         
     end
 
-    assign test = registers['b01000];
 
 
 
