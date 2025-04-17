@@ -4,7 +4,7 @@
 module top_tb;
 
     logic clk = 0;
-    logic  [31:0] read_data; // define the 32 bit command to read from memory module
+    logic [31:0] read_data; // define the 32 bit command to read from memory module
     logic write_mem;
     logic [2:0] funct3;   
     logic [31:0] write_address;
