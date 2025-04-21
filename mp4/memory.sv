@@ -73,7 +73,7 @@ module memory #(
     // Initialize memory array
     initial begin
         if (INIT_FILE) begin
-            $readmemh(INIT_FILE, memory);
+            $readmemb(INIT_FILE, memory);
         end
         else begin
             for (i = 0; i < 2048; i++) begin
