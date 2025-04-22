@@ -18,6 +18,16 @@ module controller
    logic [31:0] slli_val;
    logic [31:0] srli_val;
    logic [31:0] srai_val;
+   logic jalr_executed;
+   logic [31:0] jalr_val1;
+   logic [31:0] jalr_val2;
+   logic [31:0] sb_val1;
+   logic [31:0] sb_val2;
+   logic sb_executed;
+   logic beq_val;
+   logic beq_ran;
+   logic branch_ran;
+   logic [31:0] branch_addy;
 
    // initialize the register array of 32 32-bit value arrays
    logic [31:0] registers [31:0];
@@ -58,6 +68,16 @@ module controller
        slli_val = 32'd0;
        srli_val = 32'd0;
        srai_val = 32'd0;
+       jalr_executed = 1'b0;
+       jalr_val1 = 32'd0;
+       jalr_val2 = 32'd0;
+       sb_executed = 1'b0;
+       sb_val1 = 32'd0;
+       sb_val2 = 32'd0;
+       beq_val = 1'b0;
+       beq_ran = 1'b0;
+       branch_ran = 1'b0;
+       branch_addy = 32'd0;
    end
 
    // begin out clock loop
@@ -140,6 +160,9 @@ module controller
                    // pc=(x[rs1]+sext(offset))&∼1
                    read_address <= (registers[read_data[19:15]] + {{21{read_data[31]}}, read_data[30:20]}) & ~32'b1;                   
                    read_address <= read_address - 4; // Skip the standard PC+4 increment at the end by subtracting 4
+                   jalr_executed <= ~jalr_executed; 
+                   jalr_val1 <= read_address + 4;
+                   jalr_val2 <= (registers[read_data[19:15]] + {{21{read_data[31]}}, read_data[30:20]}) & ~32'b1;
                end
 
                // I-TYPE Load instructions (lb, lh, lw, lbu, lhu)
@@ -162,16 +185,48 @@ module controller
                        end
                    endcase
                end
+
+
+                // S-TYPE Store instructions (sb, sh, sw)
+                7'b0100011: begin
+                    write_address <= registers[read_data[19:15]] + {{21{read_data[31]}}, read_data[30:25], read_data[11:7]};
+                    case (read_data[14:12])
+                        3'b000: begin // sb - Store only the least significant byte
+                            write_data <= {24'b0, registers[read_data[24:20]][7:0]};
+                            sb_val1 <= {24'b0, registers[read_data[24:20]][7:0]};
+                            funct3 <= 3'b000;
+                            sb_val2 <= {24'b0, registers[read_data[24:20]][7:0]};
+                            sb_executed = ~sb_executed;
+                        end
+                        
+                        3'b001: begin // sh - Store only the least significant halfword
+                            write_data <= {16'b0, registers[read_data[24:20]][15:0]};
+                            funct3 <= 3'b001;
+                        end
+                        
+                        3'b010: begin // sw - Store the entire word
+                            write_data <= registers[read_data[24:20]];
+                            funct3 <= 3'b010;
+                        end
+                    endcase
+                    
+                    // Enable write for all S-type instructions
+                    write_mem <= 1'b1;
+                end
               
                // B-TYPE Branch instructions (beq, bne, blt, bge, bltu, bgeu)
                7'b1100011: begin
                    logic [31:0] branch_offset;
                    logic take_branch;
+
+                   logic [4:0] beq_rs1;
+                   logic [4:0] beq_rs2;
                   
                    // Sign-extend the immediate value for branch offset
                    // B-type immediate format: imm[12|10:5] = inst[31|30:25], imm[4:1|11] = inst[11:8|7]
                    branch_offset = {{20{read_data[31]}}, read_data[7], read_data[30:25], read_data[11:8], 1'b0};
-                  
+                   beq_rs1 = 5'd0;
+                   beq_rs2 = 5'd0;
                    // Determine if branch should be taken based on funct3
                    case (read_data[14:12])
                        3'b000: begin // beq - branch if equal
@@ -180,6 +235,10 @@ module controller
                       
                        3'b001: begin // bne - branch if not equal
                            take_branch = (registers[read_data[19:15]] != registers[read_data[24:20]]);
+                           beq_val <= (registers[read_data[19:15]] != registers[read_data[24:20]]);
+                           beq_ran <= ~beq_ran;
+                           beq_rs1 <= registers[read_data[19:15]];
+                           beq_rs2 <= registers[read_data[24:20]];
                        end
                       
                        3'b100: begin // blt - branch if less than (signed)
@@ -204,6 +263,8 @@ module controller
                    // If branch taken, update PC
                    if (take_branch) begin
                        read_address <= read_address + branch_offset - 4; // -4 because we add 4 at the end of this cycle
+                       branch_ran <=~branch_ran;
+                       branch_addy <= read_address + branch_offset - 4;
                    end
                end
            endcase
