@@ -59,7 +59,7 @@ module controller
                         3'b000: begin // perform addi 
                             // assign the immediate value with sign extend
                             // add the immediate value with the corresponding register value to its destination register
-                            registers[read_data[11:7]] <= {21{read_data[31]}, read_data[30:20]} + registers[read_data[19:15]];
+                            registers[read_data[11:7]] <= {{21{read_data[31]}}, read_data[30:20]} + registers[read_data[19:15]];
 
                         end
 
@@ -148,41 +148,36 @@ module controller
                 end
 
                 7'b1100111: begin // JALR - Jump and Link Register
-                    // I-type immediate
-                    immediate = {{21{read_data[31]}}, read_data[30:20]};
-
                     // Save return address (PC+4) in rd
                     registers[read_data[11:7]] <= read_address + 4;
 
                     // pc=(x[rs1]+sext(offset))&∼1
-                    read_address <= (registers[read_data[19:15]] + immediate) & ~32'b1; // Clear lowest bit per spec
+                    read_address <= (registers[read_data[19:15]] + {{21{read_data[31]}}, read_data[30:20]}) & ~32'b1; // Clear lowest bit per spec
                     
                     // Skip the standard PC+4 increment at the end by subtracting 4
                     read_address <= read_address - 4;
                 end
 
-                // Load instructions (lb, lh, lw, lbu, lhu)
-                7'b0000011: begin
-                    immediate <= {{20{read_data[31]}}, read_data[31:20]};
-                    case(read_data[14:12])
-                        3'b000: begin // lb - load half byte and sign extend to 32 and store in rd
-                            registers[read_data[11:7]] <= $signed(read_data[7:0]);
-                        end
-                        3'b001: begin // lh - load 16-bit and sign extend to 32 and store in rd
-                            registers[read_data[11:7]] <= $signed(read_data[15:0]);
-                        end
-                        3'b010: begin // lw - load 32-bit and sign extend to 32 and store in rd
-                            registers[read_data[11:7]] <= read_data[7:0];
-                        end
-                        3'b100: begin // lbu - load 8-bit and sign extend to 32 and store in rd
-                            registers[read_data[11:7]] <= {{24{1'b0}},read_data[7:0]};
-                        end
-                        3'b101: begin // lhu - load 16-bit and sign extend to 32 and store in rd
-                            registers[read_data[11:7]] <= {{16{1'b0}},read_data[15:0]};
-                        end
-
-                    endcase
-                end
+               // I-TYPE Load instructions (lb, lh, lw, lbu, lhu)
+               7'b0000011: begin
+                   case(read_data[14:12])
+                       3'b000: begin // lb - load half byte and sign extend to 32 and store in rd
+                           registers[read_data[11:7]] <= $signed(read_data[7:0]);
+                       end
+                       3'b001: begin // lh - load 16-bit and sign extend to 32 and store in rd
+                           registers[read_data[11:7]] <= $signed(read_data[15:0]);
+                       end
+                       3'b010: begin // lw - load 32-bit and sign extend to 32 and store in rd
+                           registers[read_data[11:7]] <= read_data[7:0];
+                       end
+                       3'b100: begin // lbu - load 8-bit and sign extend to 32 and store in rd
+                           registers[read_data[11:7]] <= {{24{1'b0}},read_data[7:0]};
+                       end
+                       3'b101: begin // lhu - load 16-bit and sign extend to 32 and store in rd
+                           registers[read_data[11:7]] <= {{16{1'b0}},read_data[15:0]};
+                       end
+                   endcase
+               end
                 
                 // Branch instructions (beq, bne, blt, bge, bltu, bgeu)
                 7'b1100011: begin
@@ -232,14 +227,22 @@ module controller
                 7'b0110011: begin
                     // funct3 cases
                     case (read_data[14:12])
-                        3'b000: begin 
-                            if (read_data[31:25] == 7'b0000000) begin 
-                                // add
-                                registers[read_data[11:7]] <= registers[read_data[19:15]] + registers[read_data[24:20]];
-                            end else if (read_data[31:25] == 7b'0100000) begin 
-                                // sub
-                                registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
-                            end
+                        3'b000: begin     
+                            case(read_data[31:25])
+                                7'b0000000: begin
+                                    registers[read_data[11:7]] <= registers[read_data[19:15]] + registers[read_data[24:20]];
+                                end
+                                7'b0100000: begin
+                                    registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
+                                end
+                            // if (read_data[31:25] == 7'b0000000) begin 
+                            //     // add
+                            //     registers[read_data[11:7]] <= registers[read_data[19:15]] + registers[read_data[24:20]];
+                            // end else if (read_data[31:25] == 7b'0100000) begin 
+                            //     // sub
+                            //     registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
+                            // end
+                            endcase
                         end
                         
                         3'b001: begin // sll
