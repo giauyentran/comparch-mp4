@@ -15,7 +15,9 @@ module controller
    logic [31:0] slti_val;
    logic [31:0] xori_val;
    logic xori_executed;
-
+   logic [31:0] slli_val;
+   logic [31:0] srli_val;
+   logic [31:0] srai_val;
 
    // initialize the register array of 32 32-bit value arrays
    logic [31:0] registers [31:0];
@@ -53,6 +55,9 @@ module controller
        slti_val = 32'd0;
        xori_val = 32'd0;
        xori_executed = 1'b0;
+       slli_val = 32'd0;
+       srli_val = 32'd0;
+       srai_val = 32'd0;
    end
 
    // begin out clock loop
@@ -110,39 +115,34 @@ module controller
                        3'b001: begin // perform slli
                            // Performs logical left shift on the value in register rs1 by the shift amount held in the lower 5 bits of the immediate
                            registers[read_data[11:7]] <= registers[read_data[19:15]] << read_data[24:20];
+                           slli_val <= registers[read_data[19:15]] << read_data[24:20];
                        end
 
                        3'b101: begin // perform srli or srai
                            case (read_data[31:27])
                                5'b00000: begin // logical right shift
-                                   // Performs logical right shift on the value in register rs1 by the shift amount held in the lower 5 bits of the immediat
+                                   // Performs logical right shift on the value in register rs1 by the shift amount held in the lower 5 bits of the immediate
                                    registers[read_data[11:7]] <= registers[read_data[19:15]] >> read_data[24:20];
+                                   srli_val <= registers[read_data[19:15]] >> read_data[24:20];
                                end
                                5'b01000: begin // arithmetic right shift
                                    registers[read_data[11:7]] <= registers[read_data[19:15]] >>> read_data[24:20];
+                                   srai_val <= registers[read_data[19:15]] >>> read_data[24:20];
                                end
                            endcase
-                       end
-                       3'b101: begin // perform srai
-                           // Performs arithmetic right shift on the value in register rs1 by the shift amount held in the lower 5 bits of the immediate
-                           registers[read_data[11:7]] <= registers[read_data[19:15]] >>> read_data[24:20];
                        end
                    endcase
                end
 
-               7'b1100111: begin // JALR - Jump and Link Register
+               7'b1100111: begin // jalr - Jump and Link Register (I-TYPE)
                    // Save return address (PC+4) in rd
                    registers[read_data[11:7]] <= read_address + 4;
-
-
                    // pc=(x[rs1]+sext(offset))&∼1
-                   read_address <= (registers[read_data[19:15]] + {{21{read_data[31]}}, read_data[30:20]}) & ~32'b1; // Clear lowest bit per spec
-                  
-                   // Skip the standard PC+4 increment at the end by subtracting 4
-                   read_address <= read_address - 4;
+                   read_address <= (registers[read_data[19:15]] + {{21{read_data[31]}}, read_data[30:20]}) & ~32'b1;                   
+                   read_address <= read_address - 4; // Skip the standard PC+4 increment at the end by subtracting 4
                end
 
-               // Load instructions (lb, lh, lw, lbu, lhu)
+               // I-TYPE Load instructions (lb, lh, lw, lbu, lhu)
                7'b0000011: begin
                    case(read_data[14:12])
                        3'b000: begin // lb - load half byte and sign extend to 32 and store in rd
@@ -163,7 +163,7 @@ module controller
                    endcase
                end
               
-               // Branch instructions (beq, bne, blt, bge, bltu, bgeu)
+               // B-TYPE Branch instructions (beq, bne, blt, bge, bltu, bgeu)
                7'b1100011: begin
                    logic [31:0] branch_offset;
                    logic take_branch;
