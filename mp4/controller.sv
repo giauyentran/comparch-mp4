@@ -12,6 +12,8 @@ module controller
     output logic [31:0] read_address
 );
 
+    logic [31:0] add_val;
+
     // initialize the register array of 32 32-bit value arrays
     logic [31:0] registers [31:0];
 
@@ -41,6 +43,8 @@ module controller
 
         // set the initial read_address to all zeros, first place in memory to read from
         read_address = 32'b0;
+
+        add_val = 32'b0;
     end
 
 
@@ -231,6 +235,7 @@ module controller
                             case(read_data[31:25])
                                 7'b0000000: begin
                                     registers[read_data[11:7]] <= registers[read_data[19:15]] + registers[read_data[24:20]];
+                                    add_val <= registers[read_data[19:15]] + registers[read_data[24:20]];
                                 end
                                 7'b0100000: begin
                                     registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
