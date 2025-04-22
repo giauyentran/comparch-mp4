@@ -240,13 +240,6 @@ module controller
                                 7'b0100000: begin
                                     registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
                                 end
-                            // if (read_data[31:25] == 7'b0000000) begin 
-                            //     // add
-                            //     registers[read_data[11:7]] <= registers[read_data[19:15]] + registers[read_data[24:20]];
-                            // end else if (read_data[31:25] == 7b'0100000) begin 
-                            //     // sub
-                            //     registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
-                            // end
                             endcase
                         end
                         
