@@ -227,6 +227,80 @@ module controller
                         read_address <= read_address + branch_offset - 4; // -4 because we add 4 at the end of this cycle
                     end
                 end
+                
+                // R-type instructions
+                7'b0110011: begin
+                    // funct3 cases
+                    case (read_data[14:12])
+                        3'b000: begin 
+                            if (read_data[31:25] == 7'b0000000) begin 
+                                // add
+                                registers[read_data[11:7]] <= registers[read_data[19:15]] + registers[read_data[24:20]];
+                            end else if (read_data[31:25] == 7b'0100000) begin 
+                                // sub
+                                registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
+                            end
+                        end
+                        
+                        3'b001: begin // sll
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] << registers[read_data[24:20]][4:0];
+                        end
+
+                        3'b010: begin // slt
+                            registers[read_data[11:7]] <= ($signed(registers[read_data[19:15]]) < $signed(registers[read_data[24:20]])) ? 32'd1 : 32'd0;
+                        end
+
+                        3'b011: begin // sltu
+                            registers[read_data[11:7]] <= (registers[read_data[19:15]] < registers[read_data[24:20]]) ? 32'd1 : 32'd0;
+                        end
+
+                        3'b100: begin // xor
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] ^ registers[read_data[24:20]];
+                        end
+
+                        3'b101: begin
+                            if (read_data[31:25] == 7'b0000000) begin
+                                // srl
+                                registers[read_data[11:7]] <= registers[read_data[19:15]] >> registers[read_data[24:20]][4:0];
+                            end else if (read_data[31:25] == 7'b0100000) begin
+                                // sra
+                                registers[read_data[11:7]] <= $signed(registers[read_data[19:15]]) >>> registers[read_data[24:20]][4:0];
+                            end
+                        end
+
+                        3'b110: begin // or
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] | registers[read_data[24:20]];
+                        end
+
+                        3'b111: begin // and
+                            registers[read_data[11:7]] <= registers[read_data[19:15]] & registers[read_data[24:20]];
+                        end
+            
+                    endcase
+                end
+
+                7'b0110111: begin // lui
+                    // U-type format: [31:12] immediate, [11:7] rd
+                    registers[read_data[11:7]] <= {read_data[31:12], 12'b0};
+                end
+
+                7'b0010111: begin // auipc
+                    // U-type: immediate << 12 + PC, result stored in rd
+                    registers[read_data[11:7]] <= read_address + {read_data[31:12], 12'b0};
+                end
+
+                7'b1101111: begin // jal
+                    // J-type immediate: [31], [19:12], [20], [30:21], 0
+                    logic [31:0] jal_imm;
+                    jal_imm = {{12{read_data[31]}}, read_data[19:12], read_data[20], read_data[30:21], 1'b0};
+
+                    // Save return address (next instruction address) in rd
+                    registers[read_data[11:7]] <= read_address + 4;
+
+                    // Jump to target address (read_address + immediate)
+                    read_address <= read_address + jal_imm - 4; // minus 4 to cancel +4 at end of cycle
+                end
+
             endcase
             // Move to the next instruction (PC+4) unless it's a load instruction
             if (read_data[6:0] != 7'b0000011) begin
