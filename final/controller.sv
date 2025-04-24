@@ -23,6 +23,10 @@ module controller
     // define iterator object
     int i;
 
+    // initialize branch logic
+    logic [31:0] branch_offset;
+    logic take_branch;
+
     initial begin
         //------initial setup, this where all of the outputs are defined-------
 
@@ -185,8 +189,7 @@ module controller
                 
                 // Branch instructions (beq, bne, blt, bge, bltu, bgeu)
                 7'b1100011: begin
-                    logic [31:0] branch_offset;
-                    logic take_branch;
+                    
                     
                     // Sign-extend the immediate value for branch offset
                     // B-type immediate format: imm[12|10:5] = inst[31|30:25], imm[4:1|11] = inst[11:8|7]

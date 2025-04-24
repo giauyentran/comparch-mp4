@@ -46,9 +46,6 @@ module memory #(
     logic [13:0] millis_counter = 14'd0;
     logic [3:0] micros_counter = 4'd0;
 
-    // Declare memory array for 8kB of actual memory
-    logic [31:0] memory [0:2047];
-
     // Declare variables to save the two LSBs of the read address and funct3
     logic read_address0;
     logic read_address1;
@@ -68,21 +65,88 @@ module memory #(
     logic sign_bit2;
     logic sign_bit3;
 
-    int i;
+    logic [31:0] read_val;
 
-    // Initialize memory array
-    initial begin
-        if (INIT_FILE) begin
-            $readmemb(INIT_FILE, memory);
-        end
-        else begin
-            for (i = 0; i < 2048; i++) begin
-                memory[i] = 32'd0;
-            end
-        end
-    end
+    logic write_address0;
+    logic write_address1;
+    logic write_word;
+    logic write_half;
+
+    logic [7:0] write_data0;
+    logic [7:0] write_data1;
+    logic [7:0] write_data2;
+    logic [7:0] write_data3;
+
+    // Declare intermediate signals to interface to implemented memory array
+    logic mem_write_enable;
+    logic mem_write_enable0;
+    logic mem_write_enable1;
+    logic mem_write_enable2;
+    logic mem_write_enable3;
+    logic [7:0] mem_write_data0;
+    logic [7:0] mem_write_data1;
+    logic [7:0] mem_write_data2;
+    logic [7:0] mem_write_data3;
+
+    logic mem_read_enable;
+    logic [7:0] mem_read_data0;
+    logic [7:0] mem_read_data1;
+    logic [7:0] mem_read_data2;
+    logic [7:0] mem_read_data3;
+
+    // Instaniate memory arrays
+    memory_array #(
+        .INIT_FILE      ((INIT_FILE != "") ? {INIT_FILE, "0.txt"} : "")
+    ) mem0 (
+        .clk            (clk), 
+        .write_enable   (mem_write_enable0), 
+        .write_address  (write_address[12:2]), 
+        .write_data     (mem_write_data0), 
+        .read_enable    (mem_read_enable), 
+        .read_address   (read_address[12:2]), 
+        .read_data      (mem_read_data0)
+    );
+
+    memory_array #(
+        .INIT_FILE      ((INIT_FILE != "") ? {INIT_FILE, "1.txt"} : "")
+    ) mem1 (
+        .clk            (clk), 
+        .write_enable   (mem_write_enable1), 
+        .write_address  (write_address[12:2]), 
+        .write_data     (mem_write_data1), 
+        .read_enable    (mem_read_enable), 
+        .read_address   (read_address[12:2]), 
+        .read_data      (mem_read_data1)
+    );
+
+    memory_array #(
+        .INIT_FILE      ((INIT_FILE != "") ? {INIT_FILE, "2.txt"} : "")
+    ) mem2 (
+        .clk            (clk), 
+        .write_enable   (mem_write_enable2), 
+        .write_address  (write_address[12:2]), 
+        .write_data     (mem_write_data2), 
+        .read_enable    (mem_read_enable), 
+        .read_address   (read_address[12:2]), 
+        .read_data      (mem_read_data2)
+    );
+
+    memory_array #(
+        .INIT_FILE      ((INIT_FILE != "") ? {INIT_FILE, "3.txt"} : "")
+    ) mem3 (
+        .clk            (clk), 
+        .write_enable   (mem_write_enable3), 
+        .write_address  (write_address[12:2]), 
+        .write_data     (mem_write_data3), 
+        .read_enable    (mem_read_enable), 
+        .read_address   (read_address[12:2]), 
+        .read_data      (mem_read_data3)
+    );
 
     // Handle memory reads
+    assign mem_read_enable = (read_address[31:13] == 19'd0);
+    assign read_val = mem_read_enable ? { mem_read_data3, mem_read_data2, mem_read_data1, mem_read_data0 } : read_value;
+
     always_ff @(posedge clk) begin
         read_address1 <= read_address[1];
         read_address0 <= read_address[0];
@@ -90,10 +154,7 @@ module memory #(
         read_half <= funct3[0];
         read_unsigned <= funct3[2];
 
-        if (read_address[31:13] == 19'd0) begin
-            read_value <= memory[read_address[12:2]];
-        end
-        else if (read_address[31:13] == 19'h7FFFF) begin
+        if (read_address[31:13] == 19'h7FFFF) begin
             case(read_address[12:2])
                 11'h7FF:
                     read_value <= leds;
@@ -110,20 +171,20 @@ module memory #(
         end
     end
 
-    assign read_value10 = read_value[15:0];
-    assign read_value32 = read_value[31:16];
-    assign read_value0 = read_value[7:0];
-    assign read_value1 = read_value[15:8];
-    assign read_value2 = read_value[23:16];
-    assign read_value3 = read_value[31:24];
-    assign sign_bit0 = read_value[7];
-    assign sign_bit1 = read_value[15];
-    assign sign_bit2 = read_value[23];
-    assign sign_bit3 = read_value[31];
+    assign read_value10 = read_val[15:0];
+    assign read_value32 = read_val[31:16];
+    assign read_value0 = read_val[7:0];
+    assign read_value1 = read_val[15:8];
+    assign read_value2 = read_val[23:16];
+    assign read_value3 = read_val[31:24];
+    assign sign_bit0 = read_val[7];
+    assign sign_bit1 = read_val[15];
+    assign sign_bit2 = read_val[23];
+    assign sign_bit3 = read_val[31];
 
     always_comb begin
         if (read_word) begin
-            read_data = read_value;
+            read_data = read_val;
         end
         else if (read_half && !read_unsigned) begin
             read_data = read_address1 ? {{16{sign_bit3}}, read_value32} : {{16{sign_bit1}}, read_value10};
@@ -143,7 +204,7 @@ module memory #(
                     read_data = {{24{sign_bit3}}, read_value3};
             endcase
         end
-        else if (!read_half && read_unsigned) begin
+        else begin
             case ({read_address1, read_address0})
                 2'b00:
                     read_data = {24'd0, read_value0};
@@ -155,38 +216,101 @@ module memory #(
                     read_data = {24'd0, read_value3};
             endcase
         end
+    end
+
+    // Handme memory writes
+    assign mem_write_enable = (write_address[31:13] == 19'd0) & write_mem;
+
+    assign write_address0 = write_address[0];
+    assign write_address1 = write_address[1];
+    assign write_word = funct3[1];
+    assign write_half = funct3[0];
+
+    assign write_data0 = write_data[7:0];
+    assign write_data1 = write_data[15:8];
+    assign write_data2 = write_data[23:16];
+    assign write_data3 = write_data[31:24];
+
+    always_comb begin
+        if (write_word) begin
+            mem_write_enable0 = mem_write_enable;
+            mem_write_enable1 = mem_write_enable;
+            mem_write_enable2 = mem_write_enable;
+            mem_write_enable3 = mem_write_enable;
+            mem_write_data0 = write_data0;
+            mem_write_data1 = write_data1;
+            mem_write_data2 = write_data2;
+            mem_write_data3 = write_data3;
+        end
+        else if (write_half & ~write_address1) begin
+            mem_write_enable0 = mem_write_enable;
+            mem_write_enable1 = mem_write_enable;
+            mem_write_enable2 = 1'b0;
+            mem_write_enable3 = 1'b0;
+            mem_write_data0 = write_data0;
+            mem_write_data1 = write_data1;
+            mem_write_data2 = 8'd0;
+            mem_write_data3 = 8'd0;
+        end
+        else if (write_half & write_address1) begin
+            mem_write_enable0 = 1'b0;
+            mem_write_enable1 = 1'b0;
+            mem_write_enable2 = mem_write_enable;
+            mem_write_enable3 = mem_write_enable;
+            mem_write_data0 = 8'd0;
+            mem_write_data1 = 8'd0;
+            mem_write_data2 = write_data0;
+            mem_write_data3 = write_data1;
+        end
         else begin
-            read_data = read_value;
+            case ({write_address1, write_address0})
+                2'b00: begin
+                    mem_write_enable0 = mem_write_enable;
+                    mem_write_enable1 = 1'b0;
+                    mem_write_enable2 = 1'b0;
+                    mem_write_enable3 = 1'b0;
+                    mem_write_data0 = write_data0;
+                    mem_write_data1 = 8'd0;
+                    mem_write_data2 = 8'd0;
+                    mem_write_data3 = 8'd0;
+                end
+                2'b01: begin
+                    mem_write_enable0 = 1'b0;
+                    mem_write_enable1 = mem_write_enable;
+                    mem_write_enable2 = 1'b0;
+                    mem_write_enable3 = 1'b0;
+                    mem_write_data0 = 8'd0;
+                    mem_write_data1 = write_data0;
+                    mem_write_data2 = 8'd0;
+                    mem_write_data3 = 8'd0;
+                end
+                2'b10: begin
+                    mem_write_enable0 = 1'b0;
+                    mem_write_enable1 = 1'b0;
+                    mem_write_enable2 = mem_write_enable;
+                    mem_write_enable3 = 1'b0;
+                    mem_write_data0 = 8'd0;
+                    mem_write_data1 = 8'd0;
+                    mem_write_data2 = write_data0;
+                    mem_write_data3 = 8'd0;
+                end
+                2'b11: begin
+                    mem_write_enable0 = 1'b0;
+                    mem_write_enable1 = 1'b0;
+                    mem_write_enable2 = 1'b0;
+                    mem_write_enable3 = mem_write_enable;
+                    mem_write_data0 = 8'd0;
+                    mem_write_data1 = 8'd0;
+                    mem_write_data2 = 8'd0;
+                    mem_write_data3 = write_data0;
+                end
+            endcase
         end
     end
 
-    // Handle memory writes
     always_ff @(posedge clk) begin
         if (write_mem) begin
-            if (write_address[31:13] == 19'd0) begin
-                if (funct3[1]) begin
-                    memory[write_address[12:2]] <= write_data;
-                end
-                else if (funct3[0]) begin
-                    if (write_address[1])
-                        memory[write_address[12:2]][31:16] <= write_data[15:0];
-                    else
-                        memory[write_address[12:2]][15:0] <= write_data[15:0];
-                end
-                else begin
-                    case (write_address[1:0])
-                        2'b00:
-                            memory[write_address[12:2]][7:0] <= write_data[7:0];
-                        2'b01:
-                            memory[write_address[12:2]][15:8] <= write_data[7:0];
-                        2'b10:
-                            memory[write_address[12:2]][23:16] <= write_data[7:0];
-                        2'b11:
-                            memory[write_address[12:2]][31:24] <= write_data[7:0];
-                    endcase
-                end
-            end
-            else if (write_address[31:2] == 30'h3FFFFFFF) begin
+            if (write_address[31:2] == 30'h3FFFFFFF) begin
                 if (funct3[1]) begin
                     leds <= write_data;
                 end
@@ -241,6 +365,48 @@ module memory #(
         end
         else begin
             micros_counter <= micros_counter + 1;
+        end
+    end
+
+endmodule
+
+module memory_array #(
+    parameter INIT_FILE = ""
+)(
+    input logic     clk, 
+    input logic     write_enable, 
+    input logic     [10:0] write_address, 
+    input logic     [7:0] write_data, 
+    input logic     read_enable, 
+    input logic     [10:0] read_address, 
+    output logic    [7:0] read_data
+);
+
+    logic [7:0] memory [0:2047];
+
+    int i;
+
+    // Initialize memory array
+    initial begin
+        if (INIT_FILE) begin
+            $readmemb(INIT_FILE, memory);
+        end
+        else begin
+            for (i = 0; i < 2048; i++) begin
+                memory[i] <= 8'd0;
+            end
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (read_enable) begin
+            read_data <= memory[read_address];
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (write_enable) begin
+            memory[write_address] <= write_data;
         end
     end
 
