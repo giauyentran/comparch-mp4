@@ -12,7 +12,6 @@ module controller
     output logic [31:0] read_address
 );
 
-    logic [31:0] add_val;
 
     // initialize the register array of 32 32-bit value arrays
     logic [31:0] registers [31:0];
@@ -24,7 +23,6 @@ module controller
     int i;
 
     // initialize branch logic
-    logic [31:0] branch_offset;
     logic take_branch;
 
     initial begin
@@ -48,7 +46,6 @@ module controller
         // set the initial read_address to all zeros, first place in memory to read from
         read_address = 32'b0;
 
-        add_val = 32'b0;
     end
 
 
@@ -193,40 +190,39 @@ module controller
                     
                     // Sign-extend the immediate value for branch offset
                     // B-type immediate format: imm[12|10:5] = inst[31|30:25], imm[4:1|11] = inst[11:8|7]
-                    branch_offset = {{20{read_data[31]}}, read_data[7], read_data[30:25], read_data[11:8], 1'b0};
                     
                     // Determine if branch should be taken based on funct3
                     case (read_data[14:12])
                         3'b000: begin // beq - branch if equal
-                            take_branch = (registers[read_data[19:15]] == registers[read_data[24:20]]);
+                            take_branch <= (registers[read_data[19:15]] == registers[read_data[24:20]]);
                         end
                         
                         3'b001: begin // bne - branch if not equal
-                            take_branch = (registers[read_data[19:15]] != registers[read_data[24:20]]);
+                            take_branch <= (registers[read_data[19:15]] != registers[read_data[24:20]]);
                         end
                         
                         3'b100: begin // blt - branch if less than (signed)
-                            take_branch = ($signed(registers[read_data[19:15]]) < $signed(registers[read_data[24:20]]));
+                            take_branch <= ($signed(registers[read_data[19:15]]) < $signed(registers[read_data[24:20]]));
                         end
                         
                         3'b101: begin // bge - branch if greater than or equal (signed)
-                            take_branch = ($signed(registers[read_data[19:15]]) >= $signed(registers[read_data[24:20]]));
+                            take_branch <= ($signed(registers[read_data[19:15]]) >= $signed(registers[read_data[24:20]]));
                         end
                         
                         3'b110: begin // bltu - branch if less than (unsigned)
-                            take_branch = (registers[read_data[19:15]] < registers[read_data[24:20]]);
+                            take_branch <= (registers[read_data[19:15]] < registers[read_data[24:20]]);
                         end
                         
                         3'b111: begin // bgeu - branch if greater than or equal (unsigned)
-                            take_branch = (registers[read_data[19:15]] >= registers[read_data[24:20]]);
+                            take_branch <= (registers[read_data[19:15]] >= registers[read_data[24:20]]);
                         end
                         
-                        default: take_branch = 1'b0;
+                        default: take_branch <= 1'b0;
                     endcase
                     
                     // If branch taken, update PC
                     if (take_branch) begin
-                        read_address <= read_address + branch_offset - 4; // -4 because we add 4 at the end of this cycle
+                        read_address <= read_address + {{20{read_data[31]}}, read_data[7], read_data[30:25], read_data[11:8], 1'b0} - 4; // -4 because we add 4 at the end of this cycle
                     end
                 end
                 
@@ -238,7 +234,6 @@ module controller
                             case(read_data[31:25])
                                 7'b0000000: begin
                                     registers[read_data[11:7]] <= registers[read_data[19:15]] + registers[read_data[24:20]];
-                                    add_val <= registers[read_data[19:15]] + registers[read_data[24:20]];
                                 end
                                 7'b0100000: begin
                                     registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
@@ -295,14 +290,12 @@ module controller
 
                 7'b1101111: begin // jal
                     // J-type immediate: [31], [19:12], [20], [30:21], 0
-                    logic [31:0] jal_imm;
-                    jal_imm = {{12{read_data[31]}}, read_data[19:12], read_data[20], read_data[30:21], 1'b0};
 
                     // Save return address (next instruction address) in rd
                     registers[read_data[11:7]] <= read_address + 4;
 
                     // Jump to target address (read_address + immediate)
-                    read_address <= read_address + jal_imm - 4; // minus 4 to cancel +4 at end of cycle
+                    read_address <= read_address + {{12{read_data[31]}}, read_data[19:12], read_data[20], read_data[30:21], 1'b0} - 4; // minus 4 to cancel +4 at end of cycle
                 end
 
             endcase
