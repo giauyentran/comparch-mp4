@@ -20,10 +20,13 @@ module controller
     logic [31:0] stop = 32'b0;
 
     // define iterator object
-    int i;
+    logic [31:0] i;
 
     // initialize branch logic
     logic take_branch;
+    logic [31:0] lui_val;
+    logic [31:0] mulh_val;
+    logic mulh_execute;
 
     initial begin
         //------initial setup, this where all of the outputs are defined-------
@@ -46,6 +49,9 @@ module controller
         // set the initial read_address to all zeros, first place in memory to read from
         read_address = 32'b0;
 
+        lui_val = 32'b0;
+        mulh_val = 32'b0;
+        mulh_execute <= 1'b0;
     end
 
 
@@ -230,19 +236,46 @@ module controller
                 7'b0110011: begin
                     // funct3 cases
                     case (read_data[14:12])
+                        default: begin
+                            // Default case to handle unexpected funct3 values
+                            registers[read_data[11:7]] <= 32'b0;
+                        end
                         3'b000: begin     
                             case(read_data[31:25])
                                 7'b0000000: begin
+                                    // add
+                                    // Adds the values in registers rs1 and rs2, and stores the result in rd.
                                     registers[read_data[11:7]] <= registers[read_data[19:15]] + registers[read_data[24:20]];
                                 end
                                 7'b0100000: begin
+                                    // sub
+                                    // Subtracts the value in register rs2 from the value in register rs1, and stores the result in rd.
                                     registers[read_data[11:7]] <= registers[read_data[19:15]] - registers[read_data[24:20]];
+                                end
+                                7'b0000001: begin
+                                    // mul
+                                    // Multiplies the values in registers rs1 and rs2, and stores the result in rd.
+                                    registers[read_data[11:7]] <= registers[read_data[19:15]] * registers[read_data[24:20]];
                                 end
                             endcase
                         end
                         
-                        3'b001: begin // sll
-                            registers[read_data[11:7]] <= registers[read_data[19:15]] << registers[read_data[24:20]][4:0];
+                        3'b001: begin
+                            case(read_data[31:25])
+                                default: ;
+                                7'b0000000: begin
+                                    // sll
+                                    // Performs logical left shift on the value in register rs1 by the shift amount held in the lower 5 bits of register rs2.
+                                    registers[read_data[11:7]] <= registers[read_data[19:15]] << registers[read_data[24:20]][4:0];
+                                end
+                                7'b0000001: begin
+                                    // mulh
+                                    // Multiplies the values in registers rs1 and rs2, and stores the upper half of the result in rd.
+                                    registers[read_data[11:7]] <= ($signed(registers[read_data[19:15]]) * ($signed(registers[read_data[24:20]]))) >>> 32;
+                                    mulh_val <= ($signed(registers[read_data[19:15]]) * ($signed(registers[read_data[24:20]])));
+                                    mulh_execute <= 1'b1;
+                                end
+                            endcase
                         end
 
                         3'b010: begin // slt
@@ -274,13 +307,14 @@ module controller
                         3'b111: begin // and
                             registers[read_data[11:7]] <= registers[read_data[19:15]] & registers[read_data[24:20]];
                         end
-            
                     endcase
                 end
 
                 7'b0110111: begin // lui
                     // U-type format: [31:12] immediate, [11:7] rd
-                    registers[read_data[11:7]] <= {read_data[31:12], 12'b0};
+                    registers[read_data
+                    .[11:7]] <= {12'b0, read_data[31:12]};
+                    lui_val <= {12'b0, read_data[31:12]};
                 end
 
                 7'b0010111: begin // auipc

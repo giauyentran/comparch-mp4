@@ -68,7 +68,7 @@ module memory #(
     logic sign_bit2;
     logic sign_bit3;
 
-    int i;
+    logic [31:0] i;
 
     // Initialize memory array
     initial begin
