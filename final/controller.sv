@@ -2,13 +2,13 @@
 
 module mulhsu
 (
-    input logic [31:0] x,
+    input logic [31:0] x, 
     input logic [31:0] y,
     input logic clk,
-    input logic rst,
-    input logic mulhsu,
-    output logic [31:0] result,
-    output logic complete
+    input logic rst, // command line to reset complete
+    input logic mulhsu, // line to initiate this module
+    output logic [31:0] result, // line to place result of operation
+    output logic complete // line to indicate that the operation is complete
 );
 
     logic [63:0] intermediate;
@@ -22,7 +22,7 @@ module mulhsu
 
     always_ff @(posedge clk) begin
         if (mulhsu) begin
-            intermediate <= x * y;
+            intermediate <= $signed(x) * $signed(y);
             complete <= 1;
         end
         if (rst) complete <= 0;
@@ -30,20 +30,6 @@ module mulhsu
 
     assign result = intermediate[63:32];
 
-    // always @ (mulhsu) begin
-    //     complete <= 0;
-    //     intermediate <= x * y;
-    // end
-
-    // always @ (intermediate) begin
-    //     result <= intermediate[63:32];
-    //     complete <= 1;
-        
-    // end
-
-    // always @ (rst) begin
-    //     if (rst) complete <= 0;
-    // end
 
 
 
