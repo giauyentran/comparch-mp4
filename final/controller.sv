@@ -30,10 +30,40 @@ module mulhsu
 
     assign result = intermediate[63:32];
 
+endmodule
+
+module mul
+(
+    input logic [31:0] x, 
+    input logic [31:0] y,
+    input logic clk,
+    input logic rst, // command line to reset complete
+    input logic mul, // line to initiate this module
+    output logic [31:0] result3, // line to place result of operation
+    output logic complete3 // line to indicate that the operation is complete
+);
+
+    logic [63:0] intermediate;
+
+    initial begin
+        complete3 <= 0;
+    end
 
 
+    // execute if x or y change (x and y are on the sensitivity list)
+
+    always_ff @(posedge clk) begin
+        if (mul) begin
+            intermediate <= $signed(x) * $signed(y);
+            complete3 <= 1;
+        end
+        if (rst) complete3 <= 0;
+    end
+
+    assign result3 = intermediate[31:0];
 
 endmodule
+
 
 module lui (
     input logic [31:0] x,
@@ -58,19 +88,6 @@ module lui (
         if (rst) complete2 <= 0;
     end
 
-    // always @ (lui) begin
-    //     result2 <= x;
-    //     complete2 <= 1;
-    // end
-
-    // always @ (rst) begin
-    //     if (rst) complete2 <= 0;
-    // end
-
-
-
-
-
 
 
 endmodule
@@ -82,6 +99,7 @@ module adder
     input logic clk,
     input logic complete,
     input logic complete2,
+    input logic complete3,
     input logic [31:0] read_data,
     output logic [31:0] read_address
 );
@@ -96,7 +114,7 @@ module adder
     end
 
     always_ff @(posedge clk) begin
-        if (complete | complete2 | read_data == 32'b0) begin
+        if (complete | complete2 | complete3 | read_data == 32'b0) begin
             if (count > 1) begin
                 count <= 0;
                 read_address <= read_address + 4;
@@ -112,10 +130,9 @@ module controller
 (
     input logic clk,
     input logic  [31:0] read_data, // define the 32 bit command to read from memory module
-    input logic complete,
-    input logic complete2,
     input logic [31:0] result,
     input logic [31:0] result2,
+    input logic [31:0] result3,
     output logic write_mem,
     output logic [2:0] funct3,   
     output logic [31:0] write_address, 
@@ -124,7 +141,8 @@ module controller
     output logic [31:0] y,
     output logic rst,
     output logic lui,
-    output logic mulhsu
+    output logic mulhsu,
+    output logic mul
 );
 
 
@@ -356,10 +374,13 @@ module controller
                     7'b0000001: begin
                         case(read_data[14:12]) 
 
-                            3'b000: begin
-                                registers[read_data[11:7]] <= $signed(registers[read_data[24:20]]) * $signed(registers[read_data[19:15]]);
+                            3'b000: begin // mul
+                                mul <= 1;
+                                y <= registers[read_data[24:20]];
+                                x <= registers[read_data[19:15]];
+                                registers[read_data[11:7]] <= result3;
                             end
-                            3'b011: begin
+                            3'b010: begin // mulhsu
                                 mulhsu <= 1;
                                 y <= registers[read_data[24:20]];
                                 x <= registers[read_data[19:15]];
@@ -463,6 +484,7 @@ module controller
             rst <= 1;
             mulhsu <= 0;
             lui <= 0;
+            mul <= 0;
         end
     end
 

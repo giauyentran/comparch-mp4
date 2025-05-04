@@ -16,11 +16,14 @@ module top(
     logic [31:0] y;
     logic [31:0] result;
     logic [31:0] result2;
+    logic [31:0] result3;
     logic complete;
     logic complete2;
+    logic complete3;
     logic rst;
     logic mulhsu;
     logic lui;
+    logic mul;
 
     mulhsu mulhsu1 (
         .clk (clk),
@@ -37,6 +40,7 @@ module top(
         .read_data (read_data),
         .complete (complete),
         .complete2 (complete2),
+        .complete3 (complete3),
         .read_address(read_address)
     );
 
@@ -46,6 +50,16 @@ module top(
         .lui (lui),
         .result2 (result2),
         .complete2 (complete2),
+        .rst (rst)
+    );
+
+    mul mul1 (
+        .clk (clk),
+        .x (x),
+        .y (y),
+        .mul (mul),
+        .result3 (result3),
+        .complete3 (complete3),
         .rst (rst)
     );
 
@@ -62,11 +76,11 @@ module top(
         .y (y),
         .result (result),
         .result2 (result2),
-        .complete (complete),
-        .complete2 (complete2),
+        .result3 (result3),
         .rst (rst),
         .mulhsu (mulhsu),
-        .lui (lui)
+        .lui (lui),
+        .mul (mul)
     );
 
     memory #(
