@@ -17,11 +17,14 @@ module top(
     logic [31:0] result;
     logic [31:0] result2;
     logic [31:0] result3;
+    logic [31:0] result4;
     logic complete;
     logic complete2;
     logic complete3;
+    logic complete4;
     logic rst;
     logic mulhsu;
+    logic mulhu;
     logic lui;
     logic mul;
 
@@ -32,6 +35,16 @@ module top(
         .mulhsu (mulhsu),
         .result (result),
         .complete (complete),
+        .rst (rst)
+    );
+
+    mulhu mulhu1 (
+        .clk (clk),
+        .x (x),
+        .y (y),
+        .mulhu (mulhu),
+        .result4 (result4),
+        .complete4 (complete4),
         .rst (rst)
     );
 
@@ -79,6 +92,7 @@ module top(
         .result3 (result3),
         .rst (rst),
         .mulhsu (mulhsu),
+        .mulhu (mulhu),
         .lui (lui),
         .mul (mul)
     );
