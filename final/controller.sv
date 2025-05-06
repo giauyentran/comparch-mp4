@@ -1,5 +1,36 @@
 `include "memory.sv"
 
+module mulh
+(
+    input logic [31:0] x, 
+    input logic [31:0] y,
+    input logic clk,
+    input logic rst, // command line to reset complete
+    input logic mulh, // line to initiate this module
+    output logic [31:0] result, // line to place result of operation
+    output logic complete // line to indicate that the operation is complete
+);
+
+    logic [63:0] intermediate;
+
+    initial begin
+        complete <= 0;
+    end
+
+
+    // execute if x or y change (x and y are on the sensitivity list)
+
+    always_ff @(posedge clk) begin
+        if (mulh) begin
+            intermediate <= $signed(x) * $signed(y);
+            complete <= 1;
+        end
+        if (rst) complete <= 0;
+    end
+
+    assign result = intermediate[31:0];
+endmodule
+
 module mulhsu
 (
     input logic [31:0] x, 
@@ -142,6 +173,7 @@ module controller
     output logic rst,
     output logic lui,
     output logic mulhsu,
+    output logic mulh,
     output logic mul
 );
 
@@ -385,11 +417,13 @@ module controller
                                 y <= registers[read_data[24:20]];
                                 x <= registers[read_data[19:15]];
                                 registers[read_data[11:7]] <= result;
-
-                                
                             end
-
-
+                            3'b001: begin // mulh
+                                mulh <= 1;
+                                y <= registers[read_data[24:20]];
+                                x <= registers[read_data[19:15]];
+                                registers[read_data[11:7]] <= result;
+                            end
                         endcase
 
 
@@ -483,6 +517,7 @@ module controller
         else begin
             rst <= 1;
             mulhsu <= 0;
+            mulh <= 0;
             lui <= 0;
             mul <= 0;
         end
