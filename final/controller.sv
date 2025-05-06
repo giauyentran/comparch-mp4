@@ -32,6 +32,38 @@ module mulhsu
 
 endmodule
 
+module mulhu
+(
+    input logic [31:0] x, 
+    input logic [31:0] y,
+    input logic clk,
+    input logic rst, // command line to reset complete
+    input logic mulhu, // line to initiate this module
+    output logic [31:0] result4, // line to place result of operation
+    output logic complete4 // line to indicate that the operation is complete
+);
+
+    logic [63:0] intermediate;
+
+    initial begin
+        complete4 <= 0;
+    end
+
+
+    // execute if x or y change (x and y are on the sensitivity list)
+
+    always_ff @(posedge clk) begin
+        if (mulhu) begin
+            intermediate <= x * y;
+            complete4 <= 1;
+        end
+        if (rst) complete4 <= 0;
+    end
+
+    assign result4 = intermediate[63:32];
+
+endmodule
+
 module mul
 (
     input logic [31:0] x, 
@@ -142,6 +174,7 @@ module controller
     output logic rst,
     output logic lui,
     output logic mulhsu,
+    output logic mulhu,
     output logic mul
 );
 
@@ -385,10 +418,14 @@ module controller
                                 y <= registers[read_data[24:20]];
                                 x <= registers[read_data[19:15]];
                                 registers[read_data[11:7]] <= result;
-
-                                
                             end
 
+                            3'b011: begin // mulhu
+                                mulhu <= 1;
+                                y <= registers[read_data[24:20]];
+                                x <= registers[read_data[19:15]];
+                                registers[read_data[11:7]] <= result;
+                            end
 
                         endcase
 
@@ -483,6 +520,7 @@ module controller
         else begin
             rst <= 1;
             mulhsu <= 0;
+            mulhu <= 0;
             lui <= 0;
             mul <= 0;
         end
