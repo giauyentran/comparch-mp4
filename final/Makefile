@@ -10,4 +10,9 @@ prog: #for sram
 	dfu-util --device 1d50:6146 --alt 0 -D $(filename).bin -R
 
 clean:
-	rm -rf $(filename).blif $(filename).asc $(filename).json $(filename).bin
+	rm -rf $(filename).blif $(filename).asc $(filename).json $(filename).bin tb top.vcd
+
+test:
+	iverilog -g2012 -o tb tb.sv
+	vvp tb
+	gtkwave top.vcd

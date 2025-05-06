@@ -2,30 +2,27 @@
 `include "top.sv"
 
 module top_tb;
-
     logic clk = 0;
-    logic [31:0] read_data; // define the 32 bit command to read from memory module
-    logic write_mem;
-    logic [2:0] funct3;   
-    logic [31:0] write_address;
-    logic [31:0] write_data;
-    logic [31:0] read_address;
-
-
-    top u0 (.clk (clk));
-
-
-    //140000000
+    
+    top u0(.clk(clk));
+    
+    // Test values for registers
     initial begin
         $dumpfile("top.vcd");
         $dumpvars(0, top_tb);
+        
+        // Monitor register values for validation
+        $monitor("Time=%0t, PC=%0d, Reg[8]=%h, Reg[9]=%h, Reg[10]=%h", 
+                 $time, u0.ctrl.pc, u0.ctrl.registers[8], u0.ctrl.registers[9], 
+                 u0.ctrl.registers[10]);
+        
         #2000
         $finish;
     end
-
+    
+    // Generate clock
     always begin
-        #4
-        clk = ~clk;
+        #4 clk = ~clk;
     end
-
+    
 endmodule
